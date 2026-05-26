@@ -2,7 +2,7 @@ import time
 import logging
 from dbus_fast.service import ServiceInterface, method
 
-from .shared import XdpSession
+from .session import XdpSession
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ class Pyrtal(ServiceInterface):
 
     @method()
     def TriggerShortcut(self, app_id: 's', shortcut_id: 's'):
+        session = XdpSession.sessions.get(app_id)
+        if not session:
+            raise ValueError(f"No active session for app_id: {app_id}")
         self.ActivateShortcut(app_id, shortcut_id)
         self.DeactivateShortcut(app_id, shortcut_id)
 

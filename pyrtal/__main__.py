@@ -6,7 +6,6 @@ from dbus_fast.message import Message
 from dbus_fast.aio import MessageBus
 from dbus_fast.constants import BusType, MessageType
 
-from .shared import BUS_NAME, OBJECT_PATH
 from .global_shortcuts import GlobalShortcuts
 try:
     from .remote_desktop import RemoteDesktop
@@ -16,7 +15,10 @@ except ImportError as e:
     _remote_desktop_error = e
 from .pyrtal import Pyrtal
 
-logger = logging.getLogger(__name__)
+BUS_NAME = "org.freedesktop.impl.portal.desktop.Pyrtal"
+OBJECT_PATH = "/org/freedesktop/portal/desktop"
+
+logger = logging.getLogger("pyrtal")
 
 
 async def main():
@@ -30,7 +32,7 @@ async def main():
     subparsers = parser.add_subparsers(dest="command")
 
     portal = subparsers.add_parser("portal", help="Run the D-Bus portal service")
-    portal.add_argument("--layout", default="us", metavar="XKB_LAYOUT", help="XKB keyboard layout for virtual keyboard (default: us)")
+    portal.add_argument("--layout", default="eu", metavar="XKB_LAYOUT", help="XKB keyboard layout for virtual keyboard (default: us)")
     subparsers.add_parser("list", help="List all active shortcut sessions and their shortcuts")
 
     act = subparsers.add_parser("activate", help="Activate a specific shortcut")
@@ -51,11 +53,12 @@ async def main():
         parser.print_help()
         sys.exit(0)
 
-    logging.basicConfig(level=args.log_level, format="%(levelname)s: %(message)s")
+    logging.basicConfig(level=args.log_level, format="%(levelname)s %(name)s: %(message)s")
 
     bus = await MessageBus(bus_type=BusType.SESSION).connect()
 
     if args.command == "portal":
+        logger.info("Starting portals")
         await bus.request_name(BUS_NAME)
         gs = GlobalShortcuts(bus)
         bus.export(OBJECT_PATH, gs)
@@ -64,17 +67,28 @@ async def main():
         else:
             logger.warning("RemoteDesktop portal disabled (install pywayland and xkbcommon to enable): %s", _remote_desktop_error)
         bus.export(OBJECT_PATH, Pyrtal(gs))
-        await bus.wait_for_disconnect()
+        try:
+            await bus.wait_for_disconnect()
+        except EOFError:
+            pass
     elif args.command == "list":
         reply = await bus.call(Message(
             destination=BUS_NAME, path=OBJECT_PATH,
             interface=Pyrtal.interface, member="ListShortcuts",
         ))
         if reply.message_type != MessageType.ERROR:
-            for app_id, shortcuts in reply.body[0].items():
-                logger.info("App: %s", app_id)
-                for sid, desc in shortcuts.items():
-                    logger.info("  - %s: %s", sid, desc)
+            rows = [
+                (app_id, sid, desc)
+                for app_id, shortcuts in reply.body[0].items()
+                for sid, desc in shortcuts.items()
+            ]
+            if rows:
+                w_app = max(len(r[0]) for r in rows + [("App ID", "", "")])
+                w_sid = max(len(r[1]) for r in rows + [("", "Shortcut ID", "")])
+                print(f"{'App':<{w_app}}  {'Shortcut':<{w_sid}}  Description")
+                print(f"{'-' * w_app}  {'-' * w_sid}  -----------")
+                for app_id, sid, desc in rows:
+                    print(f"{app_id:<{w_app}}  {sid:<{w_sid}}  {desc}")
     elif args.command in ("activate", "deactivate", "trigger"):
         member = {"activate": "ActivateShortcut", "deactivate": "DeactivateShortcut", "trigger": "TriggerShortcut"}[args.command]
         reply = await bus.call(Message(
@@ -87,4 +101,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass

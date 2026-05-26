@@ -54,6 +54,14 @@ class VirtualKeyboard:
 
         ctx = xkb.Context()
         keymap = ctx.keymap_new_from_names(layout=layout)
+        if keymap is None:
+            logger.warning("Layout '%s' not available, falling back to 'us'", layout)
+            layout="us"
+            keymap = ctx.keymap_new_from_names(layout=layout)
+
+        if keymap is None:
+            logger.error("No layouts available")
+            return False
 
         keymap_bytes = keymap.get_as_bytes()
         fd = os.memfd_create("xkb-keymap")
@@ -91,7 +99,7 @@ class VirtualKeyboard:
 
         entry = self._keysym_map.get(keysym)
         if entry is None:
-            logger.warning("No keycode mapping for keysym 0x%x", keysym)
+            logger.debug("send_keysym: No keycode mapping for keysym 0x%x", keysym)
             return
 
         keycode, mod_mask = entry

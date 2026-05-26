@@ -11,7 +11,11 @@ Can be used standalone to implement all supported portals or selectively pick th
 - Remote Desktop
   - requires [zwp_virtual_keyboard_v1](https://wayland.app/protocols/virtual-keyboard-unstable-v1)
   - only supports keysym replay
-  - should work with wide range of Latin characters (`--layout=eu`)
+  - should work with wide range of Latin characters (defaults to `--layout=eu`)
+
+Known to work on:
+  - labwc (any wlroots based should)
+  - COSMIC
 
 ## Requirements
 
@@ -20,9 +24,15 @@ Can be used standalone to implement all supported portals or selectively pick th
 - `pywayland` (optional, required for Remote Desktop) 
 - `xkbcommon` (optional, required for Remote Desktop)
 
-Install the required dependencies:
+Install the required dependencies on Debian/Ubuntu:
 ```bash
-pip install dbus-fast pywayland xkbcommon
+sudo apt install python3-dbus-fast python3-pywayland python3-xkbcommon
+```
+
+Install the required dependencies on Fedora:
+
+```bash
+sudo dnf install python3-dbus-fast python3-pywayland python3-xkbcommon
 ```
 
 ## Usage
@@ -65,7 +75,7 @@ org.freedesktop.impl.portal.RemoteDesktop=pyrtal
 EOF
 ```
 
-You may need to start/restart the xdg-desktop-portal service for these to take effect.
+You may need to start/restart the xdg-desktop-portal service for these to take effect after pyrtal is running.
 
 ### Run the portal service
 ```sh
