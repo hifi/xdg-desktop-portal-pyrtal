@@ -26,19 +26,25 @@ Known to work on:
 
 ## Install
 
-Install the required dependencies on Debian/Ubuntu:
+Install the required dependencies on Debian/Ubuntu and derivatives:
 
 ```bash
 sudo apt install python3-dbus-fast python3-pywayland python3-xkbcommon
 ```
 
-Install the required dependencies on Fedora:
+Install the required dependencies on Fedora and derivatives:
 
 ```bash
 sudo dnf install python3-dbus-fast python3-pywayland python3-xkbcommon
 ```
 
-To install pyrtal for the current desktop, the following commands will create all necessary service files and overrides on systemd enabled systems:
+Install the required dependencies on Arch Linux and derivatives:
+
+```bash
+sudo pacman -S python-dbus-fast python-pywayland python-xkbcommon
+```
+
+To install pyrtal for the current desktop, the following commands as your own user will create all necessary service files and overrides on systemd enabled systems:
 
 ```sh
 git clone https://github.com/hifi/xdg-desktop-portal-pyrtal

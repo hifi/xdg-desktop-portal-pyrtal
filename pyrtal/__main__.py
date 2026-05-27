@@ -105,11 +105,15 @@ def cmd_install():
     print(f'Wrote {service_file}')
     subprocess.run(['systemctl', '--user', 'daemon-reload'])
     subprocess.run(['systemctl', '--user', 'reload', 'dbus'])
-    print("Systemd reloaded")
+    print('Systemd reloaded')
     result = subprocess.run(['systemctl', '--user', 'is-active', '--quiet', 'xdg-desktop-portal'])
     if result.returncode == 0:
         subprocess.run(['systemctl', '--user', 'restart', 'xdg-desktop-portal'])
         print('Restarted xdg-desktop-portal.service')
+
+    print('')
+    print(f'Pyrtal is now installed and the CLI is available as {LOCAL_BIN}/pyrtal or just "pyrtal" depending on your $PATH. Enjoy!')
+    print('')
 
 
 def cmd_uninstall():
@@ -153,7 +157,7 @@ def cmd_uninstall():
 
     if reload_systemd:
         subprocess.run(['systemctl', '--user', 'daemon-reload'])
-        print("Systemd reloaded")
+        print('Systemd reloaded')
 
 
 async def main():
@@ -246,6 +250,9 @@ async def main():
 
 
 if __name__ == "__main__":
+    if os.geteuid() == 0:
+        print("Pyrtal is not supposed to be run as root")
+        sys.exit(1)
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
