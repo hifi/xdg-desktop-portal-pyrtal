@@ -53,6 +53,11 @@ def cmd_install():
     portals_conf_dir = os.path.join(XDG_CONFIG_HOME, 'xdg-desktop-portal')
     os.makedirs(portals_conf_dir, exist_ok=True)
     desktops = [d for d in os.environ.get('XDG_CURRENT_DESKTOP', '').split(':') if d]
+    blocked = [d for d in desktops if d.lower() in ('kde', 'gnome')]
+    if blocked:
+        print(f"Error: {', '.join(blocked)} already provides both GlobalShortcuts and RemoteDesktop portals. pyrtal is not needed.", file=sys.stderr)
+        sys.exit(1)
+    is_hyprland = any(d.lower() == 'hyprland' for d in desktops)
     write_conf = True
     if desktops:
         conf_filename = f'{desktops[0].lower()}-portals.conf'
@@ -72,8 +77,9 @@ def cmd_install():
         if 'preferred' not in conf:
             conf['preferred'] = {}
             conf['preferred']['default'] = 'gtk'
-        conf['preferred']['org.freedesktop.impl.portal.GlobalShortcuts'] = 'pyrtal'
         conf['preferred']['org.freedesktop.impl.portal.RemoteDesktop'] = 'pyrtal'
+        if not is_hyprland:
+            conf['preferred']['org.freedesktop.impl.portal.GlobalShortcuts'] = 'pyrtal'
         with open(local_conf_file, 'w') as f:
             conf.write(f)
         print(f'Wrote {local_conf_file}')
