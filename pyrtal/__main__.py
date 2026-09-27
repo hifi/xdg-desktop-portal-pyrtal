@@ -3,6 +3,7 @@ import argparse
 import configparser
 import glob
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -29,6 +30,41 @@ XDG_CONFIG_HOME = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.confi
 LOCAL_BIN = os.path.expanduser('~/.local/bin')
 
 logger = logging.getLogger("pyrtal")
+
+# First xdg-desktop-portal release that searches $XDG_DATA_HOME (and all
+# system data dirs) for .portal files (upstream commit bb37e260, fixes
+# https://gitlab.freedesktop.org/xdg/xdg-desktop-portal/-/issues/603).
+PORTAL_MIN_VERSION = (1, 20, 1)
+PORTAL_BINARIES = [
+    "/usr/libexec/xdg-desktop-portal",
+    "/usr/lib/xdg-desktop-portal/xdg-desktop-portal",
+    "/usr/bin/xdg-desktop-portal",
+]
+
+
+def detect_portal_version():
+    """Locate the xdg-desktop-portal binary and query its version.
+
+    Returns a (found, version) tuple: found is True if a binary was
+    located, version is the parsed version string ("" if unknown).
+    """
+    candidates = [shutil.which("xdg-desktop-portal")] + PORTAL_BINARIES
+    found = False
+    for path in candidates:
+        if not path or not os.path.isfile(path):
+            continue
+        found = True
+        try:
+            result = subprocess.run([path, "--version"],
+                                   capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if result.returncode != 0:
+            continue
+        match = re.search(r"(\d+\.\d+(?:\.\d+)?)", result.stdout)
+        if match:
+            return True, match.group(1)
+    return found, ""
 
 
 def cmd_install():
@@ -116,6 +152,27 @@ def cmd_install():
     if result.returncode == 0:
         subprocess.run(['systemctl', '--user', 'restart', 'xdg-desktop-portal'])
         print('Restarted xdg-desktop-portal.service')
+
+    # 5. Check the xdg-desktop-portal version (its .portal file search paths)
+    found, version = detect_portal_version()
+    print('')
+    if not found:
+        print('Could not locate the xdg-desktop-portal binary, skipping the version check.')
+    elif not version:
+        print('Found xdg-desktop-portal but could not determine its version (--version failed).')
+    else:
+        print(f'xdg-desktop-portal version: {version}')
+        vtuple = tuple(int(p) for p in version.split('.')[:3])
+        if vtuple < PORTAL_MIN_VERSION:
+            print('')
+            print(f'WARNING: xdg-desktop-portal {version} is older than 1.20.1 and only looks')
+            print('for .portal files in /usr/share/xdg-desktop-portal/portals, so it will')
+            print(f'not find {portal_file} and pyrtal will not be selected as a backend.')
+            print('')
+            print('Workaround (requires root):')
+            print('')
+            print(f'  sudo ln -s {portal_file} /usr/share/xdg-desktop-portal/portals/')
+            print('  systemctl --user restart xdg-desktop-portal')
 
     print('')
     print(f'Pyrtal is now installed and the CLI is available as {LOCAL_BIN}/pyrtal or just "pyrtal" depending on your $PATH. Enjoy!')
