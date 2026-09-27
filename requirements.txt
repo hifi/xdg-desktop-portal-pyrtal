@@ -1,0 +1,5 @@
+cffi==2.1.1
+dbus-fast==5.0.22
+pycparser==3.0
+pywayland==0.4.19
+xkbcommon==1.5.1

@@ -84,14 +84,14 @@ def cmd_install():
             conf.write(f)
         print(f'Wrote {local_conf_file}')
 
-    # 3. pyrtal binary
+    # 3. pyrtal binary (pins the running interpreter so venv/system both work)
     os.makedirs(LOCAL_BIN, exist_ok=True)
     pyrtal_bin = os.path.join(LOCAL_BIN, 'pyrtal')
     with open(pyrtal_bin, 'w') as f:
         f.write('#!/bin/sh\n')
-        f.write(f'PYTHONPATH={module_dir} exec python3 -m pyrtal "$@"\n')
+        f.write(f'PYTHONPATH={module_dir} exec {sys.executable} -m pyrtal "$@"\n')
     os.chmod(pyrtal_bin, os.stat(pyrtal_bin).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    print(f'Wrote {pyrtal_bin}')
+    print(f'Wrote {pyrtal_bin} (interpreter: {sys.executable})')
 
     # 4. D-Bus session service file (systemd only)
     if shutil.which('systemctl') is None:

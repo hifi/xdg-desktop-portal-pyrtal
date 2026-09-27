@@ -14,8 +14,9 @@ Can be used standalone to implement all supported portals or selectively pick th
   - should work with wide range of Latin characters (defaults to `--layout=eu`)
 
 Known to work on:
-  - labwc (any wlroots based should)
+  - wlroots (labwc, Sway etc.)
   - COSMIC
+  - Hyprland
 
 ## Requirements
 
@@ -54,6 +55,18 @@ python3 -m pyrtal install
 
 You should be able to run `pyrtal` directly given `~/.local/bin` is in your _$PATH_ and it should immediately be activated for the current session.
 For global shortcuts to register you need to either logout and login again or restart the relevant programs.
+
+### Falling back to a virtual environment
+
+If your distribution's package manager doesn't provide `dbus-fast`, `pywayland`, or `xkbcommon`, you can always use a Python virtual environment. Example for Debian based distributions:
+
+```bash
+sudo apt install python3-venv python3-pip libxkbcommon-dev
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python3 -m pyrtal install
+```
 
 ## Usage
 
