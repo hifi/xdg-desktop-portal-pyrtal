@@ -1,0 +1,28 @@
+[project]
+name = "xdg-desktop-portal-pyrtal"
+version = "0.1.0"
+description = "A minimal desktop portal for any Wayland compositor"
+authors = [
+    { name = "Toni Spets (hifi)", email = "toni.spets@iki.fi" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dbus-fast>=5.0.22",
+]
+
+[project.optional-dependencies]
+remote-desktop = [
+    "pywayland>=0.4.19",
+    "xkbcommon>=1.5.1",
+]
+
+[project.scripts]
+pyrtal = "pyrtal.__main__:run"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pyrtal*"]
