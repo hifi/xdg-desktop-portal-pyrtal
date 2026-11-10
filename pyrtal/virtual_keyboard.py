@@ -14,14 +14,18 @@ WL_KEYBOARD_FORMAT_XKB_V1 = 1
 WL_KEYBOARD_KEY_STATE_RELEASED = 0
 WL_KEYBOARD_KEY_STATE_PRESSED = 1
 
-
 class VirtualKeyboard:
     def __init__(self):
         self._display = None
+        self._manager = None
+        self._seat = None
+        self._registry = None
         self._keyboard = None
         self._keysym_map: dict[int, tuple[int, int]] = {}
 
     def connect(self, layout: str = "us") -> bool:
+        if self._display is not None:
+            self.disconnect()
         try:
             self._display = Display()
             self._display.connect()
@@ -29,27 +33,27 @@ class VirtualKeyboard:
             logger.exception("Failed to connect to Wayland display")
             return False
 
-        manager = None
-        seat = None
-        registry = self._display.get_registry()
+        self._manager = None
+        self._seat = None
+        self._registry = self._display.get_registry()
 
         def handle_global(registry_proxy, name, interface, version):
-            nonlocal manager, seat
             if interface == ZwpVirtualKeyboardManagerV1.name:
-                manager = registry_proxy.bind(name, ZwpVirtualKeyboardManagerV1, min(version, 1))
+                self._manager = registry_proxy.bind(name, ZwpVirtualKeyboardManagerV1, min(version, 1))
             elif interface == WlSeat.name:
-                if seat is None:
-                    seat = registry_proxy.bind(name, WlSeat, min(version, 7))
+                if self._seat is None:
+                    self._seat = registry_proxy.bind(name, WlSeat, min(version, 7))
 
-        registry.dispatcher["global"] = handle_global
+        self._registry.dispatcher["global"] = handle_global
 
         self._display.roundtrip()
 
-        if manager is None or seat is None:
-            logger.error("Missing Wayland globals: manager=%s seat=%s", manager, seat)
+        if self._manager is None or self._seat is None:
+            logger.error("Missing Wayland globals: manager=%s seat=%s", self._manager, self._seat)
+            self.disconnect()
             return False
 
-        self._keyboard = manager.create_virtual_keyboard(seat)
+        self._keyboard = self._manager.create_virtual_keyboard(self._seat)
         self._display.roundtrip()
 
         ctx = xkb.Context()
@@ -61,6 +65,7 @@ class VirtualKeyboard:
 
         if keymap is None:
             logger.error("No layouts available")
+            self.disconnect()
             return False
 
         keymap_bytes = keymap.get_as_bytes()
@@ -116,3 +121,35 @@ class VirtualKeyboard:
                 self._keyboard.modifiers(0, 0, 0, 0)
 
         self._display.flush()
+
+    def disconnect(self):
+        if self._keyboard is not None:
+            try:
+                self._keyboard.destroy()
+            except Exception:
+                pass
+            self._keyboard = None
+        if self._manager is not None:
+            try:
+                self._manager.destroy()
+            except Exception:
+                pass
+            self._manager = None
+        if self._seat is not None:
+            try:
+                self._seat.release()
+            except Exception:
+                pass
+            self._seat = None
+        if self._registry is not None:
+            try:
+                self._registry.destroy()
+            except Exception:
+                pass
+            self._registry = None
+        if self._display is not None:
+            try:
+                self._display.disconnect()
+            except Exception:
+                pass
+            self._display = None
