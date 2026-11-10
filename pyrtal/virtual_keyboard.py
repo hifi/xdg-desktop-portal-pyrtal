@@ -24,6 +24,8 @@ class VirtualKeyboard:
         self._keysym_map: dict[int, tuple[int, int]] = {}
 
     def connect(self, layout: str = "us") -> bool:
+        if self._display is not None:
+            self.disconnect()
         try:
             self._display = Display()
             self._display.connect()
@@ -48,6 +50,7 @@ class VirtualKeyboard:
 
         if self._manager is None or self._seat is None:
             logger.error("Missing Wayland globals: manager=%s seat=%s", self._manager, self._seat)
+            self.disconnect()
             return False
 
         self._keyboard = self._manager.create_virtual_keyboard(self._seat)
@@ -62,6 +65,7 @@ class VirtualKeyboard:
 
         if keymap is None:
             logger.error("No layouts available")
+            self.disconnect()
             return False
 
         keymap_bytes = keymap.get_as_bytes()
@@ -117,3 +121,35 @@ class VirtualKeyboard:
                 self._keyboard.modifiers(0, 0, 0, 0)
 
         self._display.flush()
+
+    def disconnect(self):
+        if self._keyboard is not None:
+            try:
+                self._keyboard.destroy()
+            except Exception:
+                pass
+            self._keyboard = None
+        if self._manager is not None:
+            try:
+                self._manager.destroy()
+            except Exception:
+                pass
+            self._manager = None
+        if self._seat is not None:
+            try:
+                self._seat.release()
+            except Exception:
+                pass
+            self._seat = None
+        if self._registry is not None:
+            try:
+                self._registry.destroy()
+            except Exception:
+                pass
+            self._registry = None
+        if self._display is not None:
+            try:
+                self._display.disconnect()
+            except Exception:
+                pass
+            self._display = None
