@@ -14,10 +14,12 @@ WL_KEYBOARD_FORMAT_XKB_V1 = 1
 WL_KEYBOARD_KEY_STATE_RELEASED = 0
 WL_KEYBOARD_KEY_STATE_PRESSED = 1
 
-
 class VirtualKeyboard:
     def __init__(self):
         self._display = None
+        self._manager = None
+        self._seat = None
+        self._registry = None
         self._keyboard = None
         self._keysym_map: dict[int, tuple[int, int]] = {}
 
@@ -29,27 +31,26 @@ class VirtualKeyboard:
             logger.exception("Failed to connect to Wayland display")
             return False
 
-        manager = None
-        seat = None
-        registry = self._display.get_registry()
+        self._manager = None
+        self._seat = None
+        self._registry = self._display.get_registry()
 
         def handle_global(registry_proxy, name, interface, version):
-            nonlocal manager, seat
             if interface == ZwpVirtualKeyboardManagerV1.name:
-                manager = registry_proxy.bind(name, ZwpVirtualKeyboardManagerV1, min(version, 1))
+                self._manager = registry_proxy.bind(name, ZwpVirtualKeyboardManagerV1, min(version, 1))
             elif interface == WlSeat.name:
-                if seat is None:
-                    seat = registry_proxy.bind(name, WlSeat, min(version, 7))
+                if self._seat is None:
+                    self._seat = registry_proxy.bind(name, WlSeat, min(version, 7))
 
-        registry.dispatcher["global"] = handle_global
+        self._registry.dispatcher["global"] = handle_global
 
         self._display.roundtrip()
 
-        if manager is None or seat is None:
-            logger.error("Missing Wayland globals: manager=%s seat=%s", manager, seat)
+        if self._manager is None or self._seat is None:
+            logger.error("Missing Wayland globals: manager=%s seat=%s", self._manager, self._seat)
             return False
 
-        self._keyboard = manager.create_virtual_keyboard(seat)
+        self._keyboard = self._manager.create_virtual_keyboard(self._seat)
         self._display.roundtrip()
 
         ctx = xkb.Context()
